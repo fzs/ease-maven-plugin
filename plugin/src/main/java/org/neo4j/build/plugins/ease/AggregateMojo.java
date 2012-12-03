@@ -37,8 +37,6 @@ import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
-import org.apache.maven.shared.artifact.filter.StrictPatternExcludesArtifactFilter;
-import org.apache.maven.shared.artifact.filter.StrictPatternIncludesArtifactFilter;
 import org.apache.maven.shared.dependency.tree.DependencyNode;
 import org.apache.maven.shared.dependency.tree.DependencyTreeBuilder;
 import org.apache.maven.shared.dependency.tree.DependencyTreeBuilderException;
@@ -65,7 +63,7 @@ public class AggregateMojo extends AbstractMojo
 {
     /**
      * Patterns for artifacts to include. The pattern format is:
-     * [groupId]:[artifactId]:[type]:[version]
+     * [groupId]:[artifactId]:[type]:[classifier:][version]
      * 
      * @parameter
      */
@@ -73,7 +71,7 @@ public class AggregateMojo extends AbstractMojo
 
     /**
      * Patterns for artifacts to exclude. The pattern format is:
-     * [groupId]:[artifactId]:[type]:[version]
+     * [groupId]:[artifactId]:[type]:[classifier:][version]
      * 
      * @parameter
      */
@@ -140,6 +138,7 @@ public class AggregateMojo extends AbstractMojo
     @Override
     public void execute() throws MojoExecutionException
     {
+        AndArtifactFilter filter = getFilter();
         SortedSet<String> aggregate = new TreeSet<String>();
         for ( Artifact dependency : getDependencies() )
         {
@@ -164,9 +163,14 @@ public class AggregateMojo extends AbstractMojo
                 throw new MojoExecutionException(
                         "Could not read artifact list for: " + dependency, ioe );
             }
+
             for ( String line : artifactList.split( "\n" ) )
             {
-                aggregate.add( line );
+                Artifact artifact = EaseHelper.createArtifact( line, artifactFactory );
+                if ( filter.include( artifact ) )
+                {
+                    aggregate.add( line );
+                }
             }
         }
         StringBuilder builder = new StringBuilder( aggregate.size() * 64 );
@@ -179,19 +183,24 @@ public class AggregateMojo extends AbstractMojo
                 getLog() );
     }
 
-    private Set<Artifact> getDependencies() throws MojoExecutionException
+    private AndArtifactFilter getFilter()
     {
-
         AndArtifactFilter filters = new AndArtifactFilter();
         if ( includes != null )
         {
-            filters.add( new StrictPatternIncludesArtifactFilter( includes ) );
+            filters.add( new EaseStrictPatternIncludesArtifactFilter( includes ) );
         }
         if ( excludes != null )
         {
-            filters.add( new StrictPatternExcludesArtifactFilter( excludes ) );
+            filters.add( new EaseStrictPatternExcludesArtifactFilter( excludes ) );
         }
 
+        return filters;
+    }
+
+    private Set<Artifact> getDependencies() throws MojoExecutionException
+    {
+        AndArtifactFilter filters = getFilter();
         Set<Artifact> artifacts = null;
 
         if ( excludeTransitive )

@@ -118,7 +118,7 @@ public class AttachMojo extends AbstractMojo
 
         for ( String artifactString : lines )
         {
-            Artifact findArtifact = createArtifact( artifactString );
+            Artifact findArtifact = EaseHelper.createArtifact( artifactString, artifactFactory );
             if ( findArtifact == null )
             {
                 throw new MojoExecutionException(
@@ -212,36 +212,4 @@ public class AttachMojo extends AbstractMojo
         getLog().info( "Attached: " + artifactToAttach );
     }
 
-    private Artifact createArtifact( String groupId, String artifactId,
-            String version, String type, String classifier )
-    {
-        return artifactFactory.createArtifactWithClassifier( groupId,
-                artifactId, version, type, classifier );
-    }
-
-    private Artifact createArtifact( String coords )
-            throws MojoExecutionException
-    {
-        String[] strings = coords.split( ":" );
-        if ( strings.length < 4 || strings.length > 5 )
-        {
-            throw new MojoExecutionException( "Can not parse coordinates: "
-                                              + coords );
-        }
-        String groupId = strings[0];
-        String artifactId = strings[1];
-        String type = strings[2];
-        String version = null;
-        String classifier = null;
-        if ( strings.length == 5 )
-        {
-            version = strings[4];
-            classifier = strings[3];
-        }
-        else if ( strings.length == 4 )
-        {
-            version = strings[3];
-        }
-        return createArtifact( groupId, artifactId, version, type, classifier );
-    }
 }
